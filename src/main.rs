@@ -14,6 +14,7 @@ use ark_ec::{
 };
 use ark_ff::field_hashers::DefaultFieldHasher;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use log::{info, warn};
 use prompt::{puzzle, welcome};
 use sha2::Sha256;
 
@@ -23,14 +24,13 @@ pub enum Error {
 }
 
 fn hasher() -> MapToCurveBasedHasher<G2Projective, DefaultFieldHasher<Sha256, 128>, WBMap<Config>> {
-  
   MapToCurveBasedHasher::<G2Projective, DefaultFieldHasher<Sha256, 128>, WBMap<Config>>::new(&[
-      1, 3, 3, 7,
-    ])
-    .unwrap()
+    1, 3, 3, 7,
+  ])
+  .unwrap()
 }
 
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize, Debug, Clone)]
 pub struct ElGamal(G1Affine, G1Affine);
 
 impl ElGamal {
@@ -110,6 +110,7 @@ fn generate_message_space() -> [Message; 10] {
 }
 
 pub fn main() {
+  env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
   welcome();
   puzzle(PUZZLE_DESCRIPTION);
 
@@ -122,14 +123,40 @@ pub fn main() {
 
   // ensure that blob is correct
   assert!(Auditor::check_auth(blob.sender_pk, &blob.c, blob.s));
+  info!("auditor happy");
 
   // Implement your attack here, to find the index of the encrypted message
+  let sender_pk = blob.sender_pk;
+  let c = blob.c.clone();
+  let c1 = blob.c.1.clone();
+  let s = blob.s;
+  let rec_pk = blob.rec_pk;
 
-  unimplemented!();
+  for (i, m) in _messages.into_iter().enumerate() {
+    let a = (c1 - m.0).into_affine();
+    let e = check_auth_evil(a, &c, s, rec_pk);
+    if e {
+      warn!("found message at index {}", i);
+      warn!("win");
+      break;
+    }
+  }
 
   // End of attack
 }
 
+pub fn check_auth_evil(s1s2_G: G1Affine, c: &ElGamal, s: G2Affine, receiver_pk: G1Affine) -> bool {
+  // let lhs = { Bls12_381::pairing(G1Projective::generator(), s) };
+  // (sk_r * G1, sk_s * H(.))
+  let lhs = { Bls12_381::pairing(receiver_pk, s) };
+  // let lhs = { receiver_pk, s) };
+
+  let hash_c = c.hash_to_curve();
+  // (sk_r*sk_s * G1, H(.))
+  let rhs = { Bls12_381::pairing(s1s2_G, hash_c) };
+
+  lhs == rhs
+}
 const PUZZLE_DESCRIPTION: &str = r"
 Bob designed a new one time scheme, that's based on the tried and true method of encrypt + sign. He combined ElGamal encryption with BLS signatures in a clever way, such that you use pairings to verify the encrypted message was not tampered with. Alice, then, figured out a way to reveal the plaintexts...
 ";
