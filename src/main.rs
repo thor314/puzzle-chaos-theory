@@ -1,3 +1,9 @@
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
+#![allow(unreachable_code)]
+#![allow(non_snake_case)]
+#![allow(clippy::clone_on_copy)]
 use std::{fs::File, io::Read, ops::Mul};
 
 use ark_bls12_381::{g2::Config, Bls12_381, Fr, G1Affine, G1Projective, G2Affine, G2Projective};
@@ -17,12 +23,11 @@ pub enum Error {
 }
 
 fn hasher() -> MapToCurveBasedHasher<G2Projective, DefaultFieldHasher<Sha256, 128>, WBMap<Config>> {
-  let wb_to_curve_hasher =
-    MapToCurveBasedHasher::<G2Projective, DefaultFieldHasher<Sha256, 128>, WBMap<Config>>::new(&[
+  
+  MapToCurveBasedHasher::<G2Projective, DefaultFieldHasher<Sha256, 128>, WBMap<Config>>::new(&[
       1, 3, 3, 7,
     ])
-    .unwrap();
-  wb_to_curve_hasher
+    .unwrap()
 }
 
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
@@ -108,7 +113,7 @@ pub fn main() {
   welcome();
   puzzle(PUZZLE_DESCRIPTION);
 
-  let messages = generate_message_space();
+  let _messages = generate_message_space();
 
   let mut file = File::open("blob.bin").unwrap();
   let mut data = Vec::new();
